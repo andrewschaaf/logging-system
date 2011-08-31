@@ -1,4 +1,5 @@
 
+# Intro
 
 ## Events
 An event consists of:
@@ -22,44 +23,7 @@ or  application/eventbuf-v2:  TODO efficient binary format
 </pre>
 
 
-
-## DevServer
-
-Saves all events in a global array.
-
-<pre>
-{DevServer} = require 'logging-system'
-new DevServer
-</pre>
-
-* [http://localhost:7007/](http://localhost:7007/)
-
-## S3POSTingServer
-
-TODO
-
-## S3TailingServer
-
-TODO
-
-
-## NodeJS Client
-<pre>
-{EventClient} = require 'event-server'
-
-logger = new EventClient {url: "http://localhost:7007"}
-log = (args...) -> logger.log args...
-
-log k:[19, 5435, 'Foo'], type:'bar', v:{}
-for i in [0...10]
-  log 'foo', {...} # key: [t, counter]
-</pre>
-
-## Java Client
-
-TODO
-
-# Use Cases
+## Use Cases
 
 ### Log files
 
@@ -75,3 +39,87 @@ TODO
             * k: <code>[t, line\_number, i, server\_id]</code>
             * v: ...parsed...
             * type: ...parsed...
+
+
+## NodeJS Client
+<pre>
+{EventClient} = require 'event-server'
+
+logger = new EventClient url:"http://localhost:7007"
+log = (args...) -> logger.log args...
+
+log k:[19, 5435, 'Foo'], type:'bar', v:{}
+for i in [0...10]
+  log 'foo', {...} # key: [t, counter]
+</pre>
+
+
+# Servers
+
+## DevServer
+
+Saves all events in a global array.
+
+<pre>
+{DevServer} = require 'logging-system'
+new DevServer port:7007
+</pre>
+
+
+## S3POSTingServer
+<pre>
+{S3POSTingServer} = require 'logging-system'
+new S3POSTingServer port:7007, batchSeconds:10, s3:<a href="https://github.com/andrewschaaf/node-s3-post">{signature64:,policy64:,AWSAccessKeyId:,bucket:}</a>
+</pre>
+
+This server just logs all incoming HTTP request fragments to S3 in batches (event)
+
+<b>TODO</b>: Each request...
+
+* ...gets a 200 response when all of the S3 requests containing its fragments have succeeded
+* ...gets a 500 when any of those S3 requests fails
+
+(For now: 200 immediately, hope for the best)
+
+#### [S3 Pricing](http://aws.amazon.com/s3/#pricing)
+<pre>
+{PUT,LIST}s          100,000 for 1 USD    => (every 10 sec => 2.6 USD/month)
+{GET}s             1,000,000 for 1 USD
+storage     >= 7.14 GB-month for 1 USD
+</pre>
+
+#### S3 Keys
+<pre>
+"v1/%Y-%m-%d/%H/%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + randomToken(8) + ".gz"
+</pre>
+
+#### Batch Format V1
+<pre>
+write "\x01" # format v1
+for e in http_events:
+  data = utf8(json(e))
+  write uint32le(data.length)
+  write data
+
+# http_events:
+#     {
+#       type:   'data'
+#       t:      new Date().getTime()
+#       req_id: ...
+#       data64: data.toString 'base64'
+#     }
+#     {
+#       type:   'end'
+#       t:      new Date().getTime()
+#       req_id: ...
+#       path:   req.path
+#     }
+</pre>
+
+#### Batch Format V2
+TODO (length-prefixed protobuf) or msgpack
+
+
+## S3TailingServer
+
+TODO
