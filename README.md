@@ -72,7 +72,7 @@ new DevServer port:7007
 new S3POSTingServer port:7007, batchSeconds:10, s3:<a href="https://github.com/andrewschaaf/node-s3-post">{signature64:,policy64:,AWSAccessKeyId:,bucket:}</a>
 </pre>
 
-This server just logs all incoming HTTP request fragments to S3 in batches (event)
+This server just logs all incoming HTTP request fragments to S3 in batches.
 
 <b>TODO</b>: Each request...
 
