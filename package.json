@@ -1,0 +1,29 @@
+{
+  "name": "logging-system",
+  "version": "0.0.1",
+  
+  "description": "An event logging system.",
+  "url": "https://github.com/andrewschaaf/logging-system",
+  
+  "main": "lib/logging-system.js",
+  
+  "dependencies": {
+    
+    "underscore": ">=1.1.7",
+    "async": ">=0.1.9",
+    "strftime": ">=0.4.6",
+    "tafa-misc-util": ">=0.1.4",
+    
+    "express": ">=2.4.3",
+    "jade": ">=0.13.0",
+    
+    "knox": ">=0.0.9"
+  },
+  
+  "author": "Andrew Schaaf <andrew@andrewschaaf.com> (http://andrewschaaf.com)",
+  
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/andrewschaaf/logging-system.git"
+  }
+}

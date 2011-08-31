@@ -1,0 +1,12 @@
+
+h2.h2 Events
+table.eventsTable
+  - each e, i in events
+    tr(class=((i % 2) == 0 ? "even" : "odd"))
+      td.type= e.type
+      td.value
+        table
+          - each item in e.items
+            tr
+              td.vk= item[0]
+              td.vv= item[1]
