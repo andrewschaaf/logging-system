@@ -66,7 +66,7 @@ new DevServer port:7007
 </pre>
 
 
-## S3POSTingServer
+## S3POSTingServer (TODO)
 <pre>
 {S3POSTingServer} = require 'logging-system'
 new S3POSTingServer port:7007, batchSeconds:10, s3:<a href="https://github.com/andrewschaaf/node-s3-post">{signature64:,policy64:,AWSAccessKeyId:,bucket:}</a>
