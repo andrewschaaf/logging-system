@@ -26,6 +26,12 @@ class DevServer
       res.render 'index', locals:
         events: reversed(@events)
     
+    app.get '/events.json', (req, res, next) =>
+      res.writeHead 200, {'Content-Type': 'text/javascript'}
+      res.end new Buffer JSON.stringify {
+        events: @events
+      }
+    
     app.get '/reset', (req, res, next) =>
       console.log '*** RESET ***'
       @events = []
