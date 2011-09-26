@@ -1,126 +1,174 @@
 
+This package helps you log zillions of events {cheaply,efficiently,reliably}.
 
-# Intro
+## EventBucket
 
-## Events
-An event consists of:
+An EventBucket is a set of events.
+
+## Event
 <pre>
-    <b>Key</b>       JSONValue'*           (JSON, <a href="http://keyjson.org">keyjson</a>)
-    <b>Type</b>      uint16 or unicode     (JSON, <a href="http://msgpack.org/">msgpack</a>)
-    <b>Value</b>     <a href="http://json.org/">JSONObject</a>            (JSON, <a href="https://code.google.com/apis/protocolbuffers/docs/encoding.html">protobuf</a> (needing a .proto file to view/analyze))
-
-* no non-integer numbers, no nested structures, no <a href="http://www.fileformat.info/info/unicode/char/0000/index.htm">\u0000</a>
+    <b>Key</b>            JSONValue'*, **
+    <b>Type</b>           uint16 or unicode
+    <b>Value</b>          <a href="http://json.org/">JSONObject</a>            (e.g. via JSON, <a href="https://code.google.com/apis/protocolbuffers/docs/encoding.html">protobuf</a> (needing a .proto file to view/analyze))
+    <b>Client Time</b>   ms since 1970         client-specified timestamp
+    <b>Server Time</b>   ms since 1970         when the event was received by the logging server
 </pre>
 
-Keys must be distinct so the server can be [idempotent](https://secure.wikimedia.org/wikipedia/en/wiki/Idempotence#Computer_science_meaning).
+\* no non-integer numbers, no nested structures, no <a href="http://www.fileformat.info/info/unicode/char/0000/index.htm">\u0000</a><br/>
+\** Keys must be distinct so the server can be [idempotent](https://secure.wikimedia.org/wikipedia/en/wiki/Idempotence#Computer_science_meaning).
 
 
-## API
+# APIs
+
+## {DevServer,LoggingServer,EventServer} API
 <pre>
-// This API call is idempotent -- if at first you don't get a 200, try, try again.
-POST /api/post-events
-    application/json:         {events: [{k: ..., type: ..., v: ...}, ...]}
-or  application/eventbuf-v2:  TODO efficient binary format
+POST /api/post-events?bucket=
+    Content-Type: "application/json" or "application/eventbuf-v2"
+    Request body: See "Formats" section
+    
+    Response status:
+      2xx or 5xx
+      TODO: 2xx only after all data has been fully persisted
+      (TEMP: 2xx immediately)
 </pre>
 
-
-## Use Cases
-
-### Log files
-
-* k: <code>[server_token, "/var/log/some-server/2011-12-31-23-59-59.log", line\_number]</code>
-* v: <code>{t:..., line:"..."}</code>
-
-### Web Analytics
-
-* GET requests to lighttpd, with rotated logs
-* Tail 'em:
-    * For each GET request:
-        * For each event, i in that request:
-            * k: <code>[t, line\_number, i, server\_id]</code>
-            * v: ...parsed...
-            * type: ...parsed...
-
-
-## NodeJS Client
+## {DevServer,EventServer} API
 <pre>
-{EventClient} = require 'event-server'
-
-logger = new EventClient url:"http://localhost:7007"
-log = (args...) -> logger.log args...
-
-log k:[19, 5435, 'Foo'], type:'bar', v:{}
-for i in [0...10]
-  log 'foo', {...} # key: [t, counter]
+GET /events.json?bucket=TOKEN
+  {"events": [{...see JSON Event Format...}...]}
 </pre>
 
+## {DevServer} API
+<pre>
+GET /reset
+  Delete all events.
+</pre>
 
 # Servers
 
 ## DevServer
-
-Saves all events in a global array.
-
 <pre>
 {DevServer} = require 'logging-system'
-new DevServer port:7007
+server = new DevServer
+server.listen PORT, () -> console.log "Listening on #{PORT}..."
 </pre>
 
+## LoggingServer (TODO)
 
-## S3POSTingServer (TODO)
+* Logs all data of all incoming HTTP requests in batches
+* HTTP requests are not parsed. Not even a little.
+* Batches are POSTed to S3
+* One batch every 10 sec implies 2.6 USD/month for POST requests
+
 <pre>
-{S3POSTingServer} = require 'logging-system'
-new S3POSTingServer port:7007, batchSeconds:10, s3:<a href="https://github.com/andrewschaaf/node-s3-post">{signature64:,policy64:,AWSAccessKeyId:,bucket:}</a>
+{LoggingServer} = require 'logging-system'
+server = new LoggingServer {
+  s3: {
+    AWSAccessKeyId: "..."
+    <a href="https://github.com/andrewschaaf/node-s3-post">policy64</a>:       "..."
+    signature64:    "..."
+    bucket:         "..."
+    customUrl:      "https://<a href="https://github.com/andrewschaaf/node-aws-stuff">my-s3-clone</a>:12345"    # OPTIONAL
+  }
+  batchSeconds: 10                                 # OPTIONAL
+}
+server.listen PORT, () -> console.log "Listening on #{PORT}..."
+# AND/OR:
+...(req, res) ->
+  if ...
+    server.handleRequest req, res
 </pre>
 
-This server just logs all incoming HTTP request fragments to S3 in batches.
+## EventServer (TODO)
 
-<b>TODO</b>: Each request...
+* Get events from S3 and/or <code>/api/post-events</code>
+* Store 'em in SQL or Cassandra
+* Provide a decent interface and API
 
-* ...gets a 200 response when all of the S3 requests containing its fragments have succeeded
-* ...gets a 500 when any of those S3 requests fails
+# Formats
 
-(For now: 200 immediately, hope for the best)
+## JSON event
+<pre>
+{
+  "key": ...,
+  "type": ...,
+  "value": ...,
+  "clientTime": 1317062859638
+}
+</pre>
 
-#### [S3 Pricing](http://aws.amazon.com/s3/#pricing)
+## JSON events
+<pre>
+{
+  "events": [...]
+}
+</pre>
+
+
+## eventbuf-v2 event
+<pre>
+msgpack(  length_of_remaining       )
+msgpack(  0x02                      )
+msgpack(  msgpack(key)              )
+msgpack(  msgpack(type)             )
+msgpack(  value_data                )
+msgpack(  client_time_ms            )
+msgpack(  sha1(all the above)[0:4]  )
+</pre>
+Min size: (1 + 1 + 2 + 2 + 1 + 9 + 4) = 20 bytes
+
+## eventbuf-v2 events
+<pre>
+Just concatenate 'em.
+</pre>
+
+
+
+## LoggingServer S3 Objects
+
+### Key
+<pre>
+"v1/%Y-%m-%d/%H-%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + serverToken + "-" + randomToken(8, BASE58_ALPHABET) + "-" + batchNumber
+...where, when the server starts, serverToken := randomToken(8, BASE58_ALPHABET)
+
+If the body is gzipped, append ".gz".
+</pre>
+
+### Batch
+
+<pre>
+Concatenated:
+  msgpack(http_event)
+</pre>
+
+#### HTTP events
+<pre>
+REQ_DATA_EVENT = 1
+REQ_END_EVENT = 2
+{
+  "1": REQ_DATA_EVENT
+  "2": reqId
+  "3": server_time_ms
+  
+  "4": data
+}
+{
+  "1": REQ_END_EVENT
+  "2": reqId
+  "3": server_time_ms
+  
+  "5": remote IP UTF-8
+  "6": content-type
+  "7": path
+}
+</pre>
+
+
+# Notes
+
+### [S3 Pricing](http://aws.amazon.com/s3/#pricing)
 <pre>
 {PUT,LIST}s          100,000 for 1 USD    => (every 10 sec => 2.6 USD/month)
 {GET}s             1,000,000 for 1 USD
 storage     >= 7.14 GB-month for 1 USD
 </pre>
-
-#### S3 Keys
-<pre>
-"v1/%Y-%m-%d/%H/%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + randomToken(8) + ".gz"
-</pre>
-
-#### Batch Format V1
-<pre>
-write "\x01" # format v1
-for e in http_events:
-  data = utf8(json(e))
-  write uint32le(data.length)
-  write data
-
-# http_events:
-#     {
-#       type:   'data'
-#       t:      new Date().getTime()
-#       req_id: ...
-#       data64: data.toString 'base64'
-#     }
-#     {
-#       type:   'end'
-#       t:      new Date().getTime()
-#       req_id: ...
-#       path:   req.path
-#     }
-</pre>
-
-#### Batch Format V2
-TODO (length-prefixed protobuf) or msgpack
-
-
-## S3TailingServer
-
-TODO

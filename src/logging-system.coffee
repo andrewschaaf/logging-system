@@ -1,12 +1,10 @@
 
-{DevServer} = require './dev-server'
-{EventClient} = require './client'
+names = [
+  'dev-server'
+  'client'
+  'logging-server'
+]
 
-
-createDevServer = (opt={}) ->
-  new DevServer
-
-
-module.exports =
-  createDevServer: createDevServer
-  EventClient: EventClient
+for name in names
+  for own k, v of require "./#{name}"
+    exports[k] = v
