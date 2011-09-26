@@ -53,7 +53,7 @@ server = new DevServer
 server.listen PORT, () -> console.log "Listening on #{PORT}..."
 </pre>
 
-## LoggingServer (TODO)
+## LoggingServer
 
 * Logs all data of all incoming HTTP requests in batches
 * HTTP requests are not parsed. Not even a little.
