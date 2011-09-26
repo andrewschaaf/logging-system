@@ -22,7 +22,7 @@ An EventBucket is a set of events.
 
 ## {DevServer,LoggingServer,EventServer} API
 <pre>
-POST /api/post-events?bucket=
+POST /api/post-events?bucket=TOKEN
     Content-Type: "application/json" or "application/eventbuf-v2"
     Request body: See "Formats" section
     
@@ -82,7 +82,7 @@ server.listen PORT, () -> console.log "Listening on #{PORT}..."
 ## EventServer (TODO)
 
 * Get events from S3 and/or <code>/api/post-events</code>
-* Store 'em in SQL or Cassandra
+* Store 'em in a key-value datastore with seek-efficient range reads (Cassandra, an SQL table...)
 * Provide a decent interface and API
 
 # Formats
@@ -129,9 +129,9 @@ Just concatenate 'em.
 ### Key
 <pre>
 "v1/%Y-%m-%d/%H-%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + serverToken + "-" + randomToken(8, BASE58_ALPHABET) + "-" + batchNumber
-...where, when the server starts, serverToken := randomToken(8, BASE58_ALPHABET)
+  ...where, when the server starts, serverToken := randomToken(8, BASE58_ALPHABET)
 
-If the body is gzipped, append ".gz".
+  If the body is gzipped, append ".gz".
 </pre>
 
 ### Batch
