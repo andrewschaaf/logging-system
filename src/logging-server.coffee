@@ -46,16 +46,17 @@ class LoggingServer extends EventEmitter
     @reqCounter
   
   _saveBatch: () ->
-    data = joinBuffers @nextBatch
-    datePart = strftime.strftimeUTC "%Y-%m-%d/%H-%M-%S-%L-Z"
-    @s3.key = "v1/#{datePart}-" + @serverToken + "-" + randomToken(8) + "-" + @batchNumber
-    @s3.data = data
-    postToS3 @s3, (e) =>
-      if not e
-        @emit 'batch-saved', {key:@s3.key}
-    delete @s3.data
-    @nextBatch = []
-    @batchNumber++
+    if @saveEmptyBatches or @nextBatch.length > 0
+      data = joinBuffers @nextBatch
+      datePart = strftime.strftimeUTC "%Y-%m-%d/%H-%M-%S-%L-Z"
+      @s3.key = "v1/#{datePart}-" + @serverToken + "-" + randomToken(8) + "-" + @batchNumber
+      @s3.data = data
+      postToS3 @s3, (e) =>
+        if not e
+          @emit 'batch-saved', {key:@s3.key}
+      delete @s3.data
+      @nextBatch = []
+      @batchNumber++
 
 
 _createServer = (key, cert, handler) ->
