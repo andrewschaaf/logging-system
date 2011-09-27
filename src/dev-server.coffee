@@ -23,7 +23,7 @@ class DevServer
   initApp: (app) ->
     
     app.get '/', (req, res, next) =>
-      res.render 'index', locals:
+      res.render 'events', locals:
         events: reversed(@events)
     
     app.get '/events.json', (req, res, next) =>
