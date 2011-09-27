@@ -20,7 +20,7 @@
     "msgpack2": ">=0.1.4",
     
     "aws-stuff": ">=0.0.3",
-    "s3-post": ">=0.0.2"
+    "s3-post": ">=0.0.5"
   },
   
   "author": "Andrew Schaaf <andrew@andrewschaaf.com> (http://andrewschaaf.com)",
