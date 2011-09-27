@@ -2,7 +2,7 @@
   "name": "logging-system",
   "version": "0.0.5",
   
-  "description": "A simple, efficient, idempotent, S3-backed event logging system.",
+  "description": "This package helps you log zillions of events {cheaply,efficiently,reliably}.",
   "url": "https://github.com/andrewschaaf/logging-system",
   
   "main": "lib/logging-system.js",
