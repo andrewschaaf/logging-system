@@ -3,12 +3,13 @@ http = require 'http'
 assert = require 'assert'
 {postToS3} = require 's3-post'
 {S3Server, cert} = require 'aws-stuff'
-{LoggingServer} = require '../lib/logging-system'
+{LoggingServer, EventServer} = require '../lib/logging-system'
 {timeoutSet} = require 'tafa-misc-util'
 
 
 S3_PORT = 47510
 LOGGING_PORT = 47511
+EVENT_PORT = 7007
 BUCKET = "takin-mah-bukket"
 
 
@@ -37,38 +38,66 @@ EVENTS = for i in [0...10]
     clientTime: new Date().getTime()
   }
 
+S3_POST_ACCESS = {
+  ca: cert
+  customUrl: "https://localhost:#{S3_PORT}"
+  bucket: BUCKET
+  
+  AWSAccessKeyId: "ignored"
+  policy64:       "ignored"
+  signature64:    "ignored"
+}
 
+S3_FULL_ACCESS = {
+  ca: cert
+  customUrl: "https://localhost:#{S3_PORT}"
+  bucket: BUCKET
+  
+  key: "ignored"
+  secret: "ignored"
+}
 
+throwe = (callback) ->
+  (e, args...) ->
+    throw e if e
+    callback e, args...
 
 test = () ->
   
   batch_keys = []
   
-  s3 = new S3Server
+  # S3Server
+  s3 = new S3Server verbose:true
   s3.listen S3_PORT, () ->
   
+  # LoggingServer
   logging = new LoggingServer {
-    s3: {
-      customUrl: "https://localhost:#{S3_PORT}"
-      bucket: BUCKET
-      policy64:       "ignored"
-      signature64:    "ignored"
-      AWSAccessKeyId: "ignored"
-      ca: cert
-    }
+    s3: S3_POST_ACCESS
     batchSeconds: 1
   }
   logging.listen LOGGING_PORT, () ->
     logging.on 'batch-saved', ({key}) ->
       console.log "Batch saved: #{key}"
       batch_keys.push key
-    postEvents EVENTS, () ->
-      timeoutSet 1500, () ->
+    
+    # EventServer
+    eventServer = new EventServer s3:S3_FULL_ACCESS
+    eventServer.listen EVENT_PORT, () ->
+      timeoutSet 1, () ->
+        
         postEvents EVENTS, () ->
           timeoutSet 1500, () ->
-            assert.equal batch_keys.length, 2
-            console.log 'OK'
-            process.exit 0
+            postEvents EVENTS, () ->
+              timeoutSet 1500, () ->
+                
+                assert.equal batch_keys.length, 2
+                
+                [k1, k2] = batch_keys
+                eventServer._processNewBatch k1, throwe () ->
+                  eventServer._processNewBatch k2, throwe () ->
+                    
+                    console.log 'OK'
+                    process.exit 0
 
 
 if not module.parent

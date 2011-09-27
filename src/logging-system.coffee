@@ -3,6 +3,7 @@ names = [
   'dev-server'
   'client'
   'logging-server'
+  'event-server'
 ]
 
 for name in names
