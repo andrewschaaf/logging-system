@@ -138,7 +138,7 @@ Just concatenate 'em.
 
 Concatenated HTTP events, each of which is:
 <pre>
-  msgpack(length_of_the_following)  # because some f-tards implement msgpack libraries without streaming
+  msgpack(length_of_the_following)  # because msgpack libraries don't support streaming
   msgpack(http_event)
 </pre>
 
@@ -151,7 +151,7 @@ REQ_END_EVENT = 2
   "2": reqId
   "3": server_time_ms
   
-  "4": base64_encode(data)  # because some f-tards implement msgpack libraries that don't let you unpack arbitrary buffers
+  "4": base64_encode(data)  # because some msgpack libraries don't let you unpack arbitrary buffers
 }
 {
   "1": REQ_END_EVENT
