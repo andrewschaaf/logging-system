@@ -128,16 +128,17 @@ Just concatenate 'em.
 
 ### Key
 <pre>
-"v1/%Y-%m-%d/%H-%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + serverToken + "-" + randomToken(8, BASE58_ALPHABET) + "-" + batchNumber
+"v1/%Y-%m-%d/%H-%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + serverToken + "-" + randomToken(8, BASE58_ALPHABET) + "-" + batchNumber + "-v1"
   ...where, when the server starts, serverToken := randomToken(8, BASE58_ALPHABET)
 
   If the body is gzipped, append ".gz".
 </pre>
 
-### Batch
+### Batch format, V1
 
+Concatenated HTTP events, each of which is:
 <pre>
-Concatenated:
+  msgpack(length_of_the_following)  # because some f-tards implement msgpack libraries without streaming
   msgpack(http_event)
 </pre>
 
@@ -150,16 +151,16 @@ REQ_END_EVENT = 2
   "2": reqId
   "3": server_time_ms
   
-  "4": data
+  "4": base64_encode(data)  # because some f-tards implement msgpack libraries that don't let you unpack arbitrary buffers
 }
 {
   "1": REQ_END_EVENT
   "2": reqId
   "3": server_time_ms
   
-  "5": remote IP UTF-8
-  "6": content-type
-  "7": path
+  "5": remote IP      UTF-8
+  "6": content-type   UTF-8
+  "7": path           UTF-8
 }
 </pre>
 

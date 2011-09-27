@@ -1,6 +1,7 @@
 
 {EventEmitter} = require 'events'
 express = require 'express'
+{pack, unpack} = require 'msgpack2'
 {readData} = require 'tafa-misc-util'
 {S3Client} = require 'aws-stuff'
 
@@ -39,7 +40,18 @@ class EventServer extends EventEmitter
     @bucket.get k:k, (e, data) ->
       return callback e if e
       
-      console.log "*** TODO process #{data.length} bytes"
+      while data
+        
+        # read http_event
+        size = unpack data
+        data = data.slice pack(size).length # ASSUMPTION!
+        http_event = unpack data
+        if data.length <= size
+          data = null
+        else
+          data = data.slice size
+        
+        # TODO process http_event
       
       callback()
 

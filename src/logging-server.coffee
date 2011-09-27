@@ -39,6 +39,7 @@ class LoggingServer extends EventEmitter
       res.end "OK\n"
   
   _save: (data) ->
+    @nextBatch.push pack data.length
     @nextBatch.push data
   
   _nextReqId: () ->
@@ -48,8 +49,8 @@ class LoggingServer extends EventEmitter
   _saveBatch: () ->
     if @saveEmptyBatches or @nextBatch.length > 0
       data = joinBuffers @nextBatch
-      datePart = strftime.strftimeUTC "%Y-%m-%d/%H-%M-%S-%L-Z"
-      @s3.key = "v1/#{datePart}-" + @serverToken + "-" + randomToken(8) + "-" + @batchNumber
+      datecode = strftime.strftimeUTC "%Y-%m-%d/%H-%M-%S-%L-Z"
+      @s3.key = "v1/#{datecode}-#{@serverToken}-#{randomToken(8)}-#{@batchNumber}-v1"
       @s3.data = data
       postToS3 @s3, (e) =>
         if not e
@@ -76,7 +77,7 @@ _encodeRequestData = (t, reqId, req, data) ->
     2: reqId
     3: t
     
-    4: data
+    4: data.toString 'base64'
   }
 
 
