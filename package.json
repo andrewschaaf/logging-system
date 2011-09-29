@@ -1,6 +1,6 @@
 {
   "name": "logging-system",
-  "version": "0.0.5",
+  "version": "0.0.6",
   
   "description": "This package helps you log zillions of events {cheaply,efficiently,reliably}.",
   "url": "https://github.com/andrewschaaf/logging-system",
