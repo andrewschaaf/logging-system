@@ -27,14 +27,16 @@ class LoggingServer extends EventEmitter
   handleRequest: (req, res) ->
     
     reqId = @_nextReqId()
+    t = new Date().getTime()
+    fragmentCounter = 0
     
     req.on 'data', (data) =>
-      t = new Date().getTime()
-      @_save _encodeRequestData t, reqId, req, data
+      data.toString('utf-8')
+      @_save _encodeRequestData fragmentCounter, t, reqId, req, data
+      fragmentCounter++
     
     req.on 'end', () =>
-      t = new Date().getTime()
-      @_save _encodeRequestEnd t, reqId, req
+      @_save _encodeRequestEnd fragmentCounter, t, reqId, req
       res.writeHead 200, {'Content-Type': 'text/plain'}
       res.end "OK\n"
   
@@ -50,7 +52,7 @@ class LoggingServer extends EventEmitter
     if @saveEmptyBatches or @nextBatch.length > 0
       data = joinBuffers @nextBatch
       datecode = strftime.strftimeUTC "%Y-%m-%d/%H-%M-%S-%L-Z"
-      @s3.key = "v1/#{datecode}-#{@serverToken}-#{randomToken(8)}-#{@batchNumber}-v1"
+      @s3.key = "v1/#{datecode}-#{@serverToken}-#{randomToken(8)}-#{@batchNumber}-v2"
       @s3.data = data
       postToS3 @s3, (e) =>
         if not e
@@ -71,23 +73,25 @@ REQ_DATA_EVENT = 1
 REQ_END_EVENT = 2
 
 
-_encodeRequestData = (t, reqId, req, data) ->
+_encodeRequestData = (fragmentId, t, reqId, req, data) ->
   pack {
     1: REQ_DATA_EVENT
     2: reqId
     3: t
+    8: fragmentId
     
-    4: data.toString 'base64'
+    4: data
   }
 
 
-_encodeRequestEnd = (t, reqId, req) ->
+_encodeRequestEnd = (fragmentId, t, reqId, req) ->
   remoteIp = req.headers['x-forwarded-for']
   contentType = req.headers['content-type']
   pack {
     1: REQ_END_EVENT
     2: reqId
     3: t
+    8: fragmentId
     
     5: if remoteIp then new Buffer(remoteIp, 'utf-8') else null
     6: if contentType then new Buffer(contentType, 'utf-8') else null

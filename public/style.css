@@ -7,6 +7,8 @@ blockquote:before,blockquote:after,q:before,q:after{content:"";content:none}
 table{border-collapse:collapse;border-spacing:0}
 body{padding:20px;font-family:"Lucida Grande"}
 .h2{font-weight:bold;font-size:18px}
+.buckets{margin:20px}
+li.bucket{line-height:20px}
 .eventsTable{padding:10px;margin-left:15px;margin-top:15px}
 .even td{background:#c9edf8}
 .odd td{background:#c5ddb0}

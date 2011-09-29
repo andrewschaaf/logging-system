@@ -18,9 +18,15 @@ An EventBucket is a set of events.
 \** Keys must be distinct so the server can be [idempotent](https://secure.wikimedia.org/wikipedia/en/wiki/Idempotence#Computer_science_meaning).
 
 
+# Stuff
+<pre>
+{LoggingServer, EventServer, EventClient} = require 'logging-system'
+</pre>
+
+
 # APIs
 
-## {DevServer,LoggingServer,EventServer} API
+## {LoggingServer,EventServer} API
 <pre>
 POST /api/post-events?bucket=TOKEN
     Content-Type: "application/json" or "application/eventbuf-v2"
@@ -32,36 +38,25 @@ POST /api/post-events?bucket=TOKEN
       (TEMP: 2xx immediately)
 </pre>
 
-## {DevServer,EventServer} API
+## EventServer API
 <pre>
 GET /events.json?bucket=TOKEN
   {"events": [{...see JSON Event Format...}...]}
-</pre>
 
-## {DevServer} API
-<pre>
 GET /reset
   Delete all events.
 </pre>
 
 # Servers
 
-## DevServer
-<pre>
-{DevServer} = require 'logging-system'
-server = new DevServer
-server.listen PORT, () -> console.log "Listening on #{PORT}..."
-</pre>
-
 ## LoggingServer
 
 * Logs all data of all incoming HTTP requests in batches
-* HTTP requests are not parsed. Not even a little.
+* HTTP requests are not parsed. Not even a little. // TEMP: requiring UTF-8 for now
 * Batches are POSTed to S3
 * One batch every 10 sec implies 2.6 USD/month for POST requests
 
 <pre>
-{LoggingServer} = require 'logging-system'
 server = new LoggingServer {
   s3: {
     AWSAccessKeyId: "..."
@@ -79,11 +74,19 @@ server.listen PORT, () -> console.log "Listening on #{PORT}..."
     server.handleRequest req, res
 </pre>
 
-## EventServer (TODO)
+## EventServer
+<pre>
+server = new EventServer()
+server.listen PORT, () -> console.log "Listening on #{PORT}..."
+server.reset() # delete all events
+</pre>
 
-* Get events from S3 and/or <code>/api/post-events</code>
-* Store 'em in a key-value datastore with seek-efficient range reads (Cassandra, an SQL table...)
-* Provide a decent interface and API
+### Datastore usage
+<pre>
+[EVENTS, bucket, k_string]                      -> eventJson // later protobuf
+[INDEXED_EVENTS, bucket, indexId, ...index...]  -> eventJson // later protobuf
+</pre>
+
 
 # Formats
 
@@ -105,19 +108,12 @@ server.listen PORT, () -> console.log "Listening on #{PORT}..."
 </pre>
 
 
-## eventbuf-v2 event
+## eventbuf-v3 event
 <pre>
-msgpack(  length_of_remaining       )
-msgpack(  0x02                      )
-msgpack(  msgpack(key)              )
-msgpack(  msgpack(type)             )
-msgpack(  value_data                )
-msgpack(  client_time_ms            )
-msgpack(  sha1(all the above)[0:4]  )
+TODO
 </pre>
-Min size: (1 + 1 + 2 + 2 + 1 + 9 + 4) = 20 bytes
 
-## eventbuf-v2 events
+## eventbuf-v3 events
 <pre>
 Just concatenate 'em.
 </pre>
@@ -128,13 +124,13 @@ Just concatenate 'em.
 
 ### Key
 <pre>
-"v1/%Y-%m-%d/%H-%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + serverToken + "-" + randomToken(8, BASE58_ALPHABET) + "-" + batchNumber + "-v1"
+"v1/%Y-%m-%d/%H-%M-%S-<a href="https://github.com/samsonjs/strftime/commit/c5362e748c43c6673be83cec92e8887bf92cb60b">%L</a>-Z-" + serverToken + "-" + randomToken(8, BASE58_ALPHABET) + "-" + batchNumber + "-v2"
   ...where, when the server starts, serverToken := randomToken(8, BASE58_ALPHABET)
 
   If the body is gzipped, append ".gz".
 </pre>
 
-### Batch format, V1
+### Batch format, V2
 
 Concatenated HTTP events, each of which is:
 <pre>
@@ -147,20 +143,22 @@ Concatenated HTTP events, each of which is:
 REQ_DATA_EVENT = 1
 REQ_END_EVENT = 2
 {
-  "1": REQ_DATA_EVENT
-  "2": reqId
-  "3": server_time_ms
+  1: REQ_DATA_EVENT
+  2: reqId
+  3: ms_timestamp_of_first_fragment
+  8: fragment_id
   
-  "4": base64_encode(data)  # because some msgpack libraries don't let you unpack arbitrary buffers
+  4: data
 }
 {
-  "1": REQ_END_EVENT
-  "2": reqId
-  "3": server_time_ms
+  1: REQ_END_EVENT
+  2: reqId
+  3: ms_timestamp_of_first_fragment
+  8: fragment_id
   
-  "5": remote IP      UTF-8
-  "6": content-type   UTF-8
-  "7": path           UTF-8
+  5: remote IP      UTF-8
+  6: content-type   UTF-8
+  7: path           UTF-8
 }
 </pre>
 

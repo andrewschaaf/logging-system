@@ -1,2 +1,6 @@
 
 h2 EventBuckets:
+  ul.buckets
+  - each bucket in buckets
+    li.bucket
+      a(href="/events?bucket=" + bucket)= bucket

@@ -81,7 +81,7 @@ test = () ->
       batch_keys.push key
     
     # EventServer
-    eventServer = new EventServer s3:S3_FULL_ACCESS
+    eventServer = new EventServer s3:S3_FULL_ACCESS, verbose:true
     eventServer.listen EVENT_PORT, () ->
       timeoutSet 1, () ->
         
@@ -96,8 +96,9 @@ test = () ->
                 eventServer._processNewBatch k1, throwe () ->
                   eventServer._processNewBatch k2, throwe () ->
                     
-                    console.log 'OK'
-                    process.exit 0
+                    timeoutSet 2121500, () ->
+                      console.log 'OK'
+                      process.exit 0
 
 
 if not module.parent
